@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Valencia SME Solutions</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+    <link href="/css/styles.css" rel="stylesheet">
+</head>
+<body class="dark-theme">
+    <div class="animated-bg"></div>
+    
+    <nav class="navbar" id="dynamicIsland">
+        <div class="container">
+            <a class="navbar-brand" href="#">
+                <i class="bi bi-graph-up-arrow"></i>
+                Valencia SME
+            </a>
+            <div class="nav-controls">
+                <div class="language-switcher">
+                    <button class="nav-link active">EN</button>
+                    <button class="nav-link">ES</button>
+                </div>
+                <div class="theme-switch">
+                    <input type="checkbox" id="theme-toggle" class="theme-toggle">
+                    <label for="theme-toggle" class="theme-label">
+                        <i class="fas fa-sun"></i>
+                        <i class="fas fa-moon"></i>
+                    </label>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="app-container">
+        <div class="bento-grid">
+            <!-- Hero Section -->
+            <div class="bento-item hero-bento" data-aos="fade-up">
+                <h1 class="hero-title">
+                    Business Intelligence
+                    <span class="hero-subtitle">for Valencia SMEs</span>
+                </h1>
+                <p class="hero-description">Empower your business with data-driven insights</p>
+            </div>
+
+            <!-- Analysis Form -->
+            <div class="bento-item form-bento" data-aos="fade-up" data-aos-delay="100">
+                <div class="bento-content">
+                    <div class="bento-header">
+                        <i class="bi bi-graph-up-arrow"></i>
+                        <h2 class="bento-title" data-translate="title">Analysis Dashboard</h2>
+                    </div>
+                    <div class="bento-body">
+                        <form id="analysisForm" class="analysis-form">
+                            <div class="form-group">
+                                <label for="businessName" data-translate="businessName">Business Name</label>
+                                <input type="text" id="businessName" required class="glass-input" 
+                                       placeholder="Enter your business name">
+                            </div>
+                            
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="businessType" data-translate="businessType">Business Type</label>
+                                    <select id="businessType" class="glass-input">
+                                        <option value="restaurant" data-translate="restaurant">Restaurant</option>
+                                        <option value="hotel" data-translate="hotel">Hotel</option>
+                                        <option value="attraction" data-translate="attraction">Tourist Attraction</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="analysisType" data-translate="analysisType">Analysis Type</label>
+                                    <select id="analysisType" class="glass-input">
+                                        <option value="pricing" data-translate="pricing">Dynamic Pricing</option>
+                                        <option value="sentiment" data-translate="sentiment">Sentiment Analysis</option>
+                                        <option value="competitors" data-translate="competitors">Competitor Analysis</option>
+                                        <option value="forecast" data-translate="forecast">Sales Forecast</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <button type="submit" class="gradient-button">
+                                <span class="button-content" data-translate="analyze">Analyze Business</span>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stats Cards -->
+            <div class="bento-item stat-bento" data-aos="fade-up" data-aos-delay="200">
+                <div class="bento-content">
+                    <div class="bento-header">
+                        <i class="bi bi-shop"></i>
+                        <h3 class="bento-title">Businesses</h3>
+                    </div>
+                    <div class="stat-value">2,500+</div>
+                    <div class="stat-label">Active SMEs in Valencia</div>
+                </div>
+            </div>
+
+            <div class="bento-item stat-bento" data-aos="fade-up" data-aos-delay="300">
+                <div class="bento-content">
+                    <div class="bento-header">
+                        <i class="bi bi-lightning-charge"></i>
+                        <h3 class="bento-title">Analysis</h3>
+                    </div>
+                    <div class="stat-value">98%</div>
+                    <div class="stat-label">Accuracy Rate</div>
+                </div>
+            </div>
+
+            <!-- Loading State -->
+            <div id="loadingCard" class="bento-item span-4 loading-container d-none" data-aos="fade-up">
+                <div class="modern-loader">
+                    <div class="loader-ring"></div>
+                    <p class="loader-text" data-translate="loading">Processing your request...</p>
+                </div>
+            </div>
+
+            <!-- Results Section -->
+            <div id="resultsContainer" class="bento-item results-bento d-none" data-aos="fade-up">
+                <div class="bento-content">
+                    <div class="bento-header">
+                        <i class="bi bi-graph-up"></i>
+                        <h3 class="bento-title" data-translate="results">Analysis Results</h3>
+                    </div>
+                    <div id="analysisResults" class="bento-body results-content"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <script src="/translations.js"></script>
+    <script src="/app.js"></script>
+    <script src="/charts.js"></script>
+</body>
+</html>
