@@ -30,7 +30,7 @@ An AI-powered business analytics platform that provides comprehensive market int
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/valencia_sme_solutions.git
+git clone https://github.com/Ola-Yeenca/sme_solution.git
 cd valencia_sme_solutions
 ```
 
