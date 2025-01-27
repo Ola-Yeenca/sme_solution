@@ -225,10 +225,10 @@ Currently not accepting external contributions.
 
 ## Authors
 
-- Valencia SME Solutions Team
+- Ola Yinka
 
 ## Acknowledgments
 
 - OpenRouter for AI model access
 - TripAdvisor for business data
-- All our beta testers and early adopters
+- All our beta testers and early adopters.
