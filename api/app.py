@@ -8,6 +8,10 @@ from shared.restaurant_data_fetcher import RestaurantDataFetcher
 from shared.hotel_data_fetcher import HotelDataFetcher
 from shared.tourist_data_fetcher import TouristAttractionDataFetcher
 from config.business_types import BusinessType
+from flask import Flask, request, jsonify, send_from_directory
+from flask_cors import CORS
+import logging
+import datetime
 
 load_dotenv()
 
@@ -127,23 +131,12 @@ def analyze(analysis_type):
             })
             
         except Exception as e:
-            error_message = str(e).lower()
-            if "rate limit exceeded" in error_message or "too many 429" in error_message:
-                retry_after = 60
-                if "try again in" in error_message:
-                    try:
-                        retry_after = int(error_message.split("try again in")[1].split()[0]) * 60
-                    except:
-                        pass
-                
-                return jsonify({
-                    'status': 'error',
-                    'error': 'Rate limit exceeded',
-                    'message': 'The service is temporarily unavailable due to high demand. Please try again later.',
-                    'retry_after': retry_after
-                }), 429
-            else:
-                raise
+            app.logger.exception("Unexpected error during analysis")
+            return jsonify({
+                'status': 'error',
+                'error': 'Internal server error',
+                'message': str(e)
+            }), 500
                 
     except Exception as e:
         app.logger.error(f"Error in analyze endpoint: {str(e)}")
@@ -156,10 +149,16 @@ def analyze(analysis_type):
 @app.route('/status', methods=['GET'])
 def status():
     return jsonify({
-        'status': 'healthy',
-        'version': '1.0.0',
-        'supported_business_types': list(DATA_FETCHERS.keys()),
-        'supported_analysis_types': ['pricing', 'sentiment', 'competitors', 'forecast']
+        'status': 'ok',
+        'version': '1.0.0'
+    })
+
+@app.route('/health', methods=['GET'])
+def health():
+    """Health check endpoint with current server time."""
+    return jsonify({
+        'status': 'ok',
+        'time': datetime.datetime.utcnow().isoformat() + 'Z'
     })
 
 @app.errorhandler(404)

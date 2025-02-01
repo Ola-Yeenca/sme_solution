@@ -27,16 +27,38 @@ class BusinessAnalyzerFactory:
 
     def create_analyzer(self, business_type: str, analysis_type: str) -> Optional[Any]:
         """Create an analyzer based on analysis type."""
+        import inspect
+        import logging
+        logger = logging.getLogger(__name__)
         try:
             analyzer_class = self.SUPPORTED_ANALYZERS.get(analysis_type)
             if not analyzer_class:
                 raise ValueError(
                     f"Invalid analysis type. Must be one of: {', '.join(self.SUPPORTED_ANALYZERS.keys())}"
                 )
-                
-            return analyzer_class(self.data_fetcher)
+
+            # Get __init__ parameters excluding self
+            sig = inspect.signature(analyzer_class.__init__)
+            params = list(sig.parameters.values())[1:]
+            logger.debug(f"Analyzing {analyzer_class.__name__} parameters: {params}")
             
+            # Check for any business_type parameters (including variants)
+            business_type_params = [p for p in params if 'business_type' in p.name]
+            logger.debug(f"Business type parameters found: {business_type_params}")
+            
+            if business_type_params:
+                param = business_type_params[0]
+                if param.default == inspect.Parameter.empty:
+                    logger.info(f"Creating {analyzer_class.__name__} with required business_type")
+                    return analyzer_class(self.data_fetcher, business_type)
+                else:
+                    logger.info(f"Creating {analyzer_class.__name__} with optional business_type")
+                    return analyzer_class(self.data_fetcher, business_type)
+            else:
+                logger.info(f"Creating {analyzer_class.__name__} without business_type")
+                return analyzer_class(self.data_fetcher)
         except Exception as e:
+            logger.error(f"Error creating analyzer: {str(e)}")
             raise Exception(f"Error creating analyzer: {str(e)}")
 
     @classmethod

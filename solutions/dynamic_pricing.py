@@ -10,9 +10,10 @@ from shared.ai_model_config import AIModel, ModelConfig
 class DynamicPricingAnalyzer:
     """Analyzer for dynamic pricing recommendations."""
     
-    def __init__(self, data_fetcher: BusinessDataFetcher):
-        """Initialize with a data fetcher."""
+    def __init__(self, data_fetcher: BusinessDataFetcher, business_type=None):
+        """Initialize with a data fetcher and optional business type."""
         self.data_fetcher = data_fetcher
+        self.business_type = business_type
         self.api_key = os.getenv("OPENROUTER_API_KEY")
         if not self.api_key:
             raise ValueError("OPENROUTER_API_KEY environment variable is not set")
@@ -25,7 +26,7 @@ class DynamicPricingAnalyzer:
         """Analyze pricing for a business."""
         try:
             # Get business details and competitors
-            business_data = self.data_fetcher.get_business_details(business_name)
+            business_data = self.data_fetcher.get_business_data(business_name)
             competitors = self.data_fetcher.get_competitors(business_name)
             
             # Get AI analysis using Claude-3

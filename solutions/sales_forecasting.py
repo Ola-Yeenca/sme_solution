@@ -10,9 +10,10 @@ from shared.ai_model_config import AIModel, ModelConfig
 class SalesForecastingEngine:
     """Engine for sales forecasting and trend analysis."""
     
-    def __init__(self, data_fetcher: BusinessDataFetcher):
-        """Initialize with a data fetcher."""
+    def __init__(self, data_fetcher: BusinessDataFetcher, business_type=None):
+        """Initialize the sales forecasting engine with a data fetcher and optional business type."""
         self.data_fetcher = data_fetcher
+        self.business_type = business_type
         self.api_key = os.getenv("OPENROUTER_API_KEY")
         if not self.api_key:
             raise ValueError("OPENROUTER_API_KEY environment variable is not set")

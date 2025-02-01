@@ -219,6 +219,24 @@ class BusinessCharts {
     }
 }
 
+// Extend BusinessCharts to support dynamic theme switching
+BusinessCharts.prototype.toggleTheme = function(newTheme) {
+    this.theme = newTheme;
+
+    // Update Price Chart colors based on theme
+    if(this.charts.price) {
+        const darkColors = { border: 'rgba(99,102,241,1)', background: 'rgba(99,102,241,0.2)' };
+        const lightColors = { border: 'rgba(37,99,235,1)', background: 'rgba(37,99,235,0.2)' };
+        const colors = (newTheme === 'dark') ? darkColors : lightColors;
+        this.charts.price.data.datasets[0].borderColor = colors.border;
+        this.charts.price.data.datasets[0].backgroundColor = colors.background;
+        this.charts.price.update();
+    }
+
+    // For competitor chart, and others, a similar update could be applied if needed.
+    // This example only updates the Price Chart. Extend as required.
+};
+
 // Initialize charts
 const businessCharts = new BusinessCharts();
 document.addEventListener('DOMContentLoaded', () => businessCharts.initCharts()); 

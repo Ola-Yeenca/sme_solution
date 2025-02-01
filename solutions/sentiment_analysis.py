@@ -3,16 +3,18 @@
 import os
 from typing import Dict, Any, List
 import requests
-
+import json
 from shared.business_data_fetcher import BusinessDataFetcher
 from shared.ai_model_config import AIModel, ModelConfig
+from openai import OpenAI
 
 class SentimentAnalyzer:
     """Analyzer for customer sentiment and feedback."""
     
-    def __init__(self, data_fetcher: BusinessDataFetcher):
-        """Initialize with a data fetcher."""
+    def __init__(self, data_fetcher: BusinessDataFetcher, business_type=None):
+        """Initialize with a data fetcher and optional business type."""
         self.data_fetcher = data_fetcher
+        self.business_type = business_type
         self.api_key = os.getenv("OPENROUTER_API_KEY")
         if not self.api_key:
             raise ValueError("OPENROUTER_API_KEY environment variable is not set")
@@ -22,87 +24,127 @@ class SentimentAnalyzer:
         self.model_config = ModelConfig.get_model_config(self.model)
 
     def analyze(self, business_name: str) -> Dict[str, Any]:
-        """Analyze sentiment for a business."""
-        try:
-            # Get business details and reviews
-            business_data = self.data_fetcher.get_business_details(business_name)
+        """Analyze sentiment for a business using multiple data sources.
+        
+        Args:
+            business_name: Name of the business to analyze
             
-            # Get AI analysis using Claude-3
-            analysis = self._get_ai_analysis(business_data)
-            
+        Returns:
+            Dictionary containing sentiment analysis results
+        """
+        # Fetch reviews from all available sources
+        reviews = self.data_fetcher.get_reviews(business_name, limit=50)
+        
+        if not reviews:
             return {
-                'business_info': {
-                    'name': business_name,
-                    'rating': business_data['rating'],
-                    'reviews_count': business_data['reviews_count']
-                },
-                'sentiment_analysis': analysis
+                "error": "No reviews found for the business",
+                "sentiment_score": 0,
+                "strengths": [],
+                "improvements": [],
+                "themes": {"positive": [], "negative": []},
+                "recommendations": [],
+                "sources": []
             }
             
-        except Exception as e:
-            raise Exception(f"Error in sentiment analysis: {str(e)}")
-
-    def _get_ai_analysis(self, business_data: Dict[str, Any]) -> str:
-        """Get AI-powered sentiment analysis using Claude-3."""
+        # Get business data for context
+        business_data = self.data_fetcher.get_business_data(business_name)
+        
+        # Perform AI analysis
+        analysis = self._get_ai_analysis(business_data, reviews)
+        
+        # Add source information
+        analysis["sources"] = business_data.get("sources", [])
+        analysis["total_reviews_analyzed"] = len(reviews)
+        
+        return analysis
+        
+    def _get_ai_analysis(self, business_data: Dict[str, Any], reviews: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """Get AI-powered sentiment analysis using Claude-3.
+        
+        Args:
+            business_data: Business information for context
+            reviews: List of reviews to analyze
+            
+        Returns:
+            Dictionary containing detailed sentiment analysis
+        """
+        client = OpenAI(
+            base_url="https://openrouter.ai/api/v1",
+            api_key=self.api_key
+        )
+        
+        # Prepare review text with source and time context
+        review_texts = []
+        for review in reviews:
+            source = review.get("source", "unknown")
+            time = review.get("time", "unknown date")
+            rating = review.get("rating", "no rating")
+            text = review.get("text", "").strip()
+            if text:
+                review_texts.append("[Source: {}, Time: {}, Rating: {}]\n{}".format(source, time, rating, text))
+        
+        reviews_joined = "\n\n".join(review_texts[:50])
+        prompt = (
+            "Analyze these customer reviews for {}:\n\n"
+            "Business Context:\n"
+            "- Overall Rating: {}\n"
+            "- Total Reviews: {}\n"
+            "- Price Level: {}\n\n"
+            "Reviews:\n"
+            "{}  # Limit to 50 reviews for token limit\n\n"
+            "Please provide a comprehensive analysis including:\n"
+            "1. Overall sentiment score (1-10)\n"
+            "2. Key strengths (top 3-5)\n"
+            "3. Areas for improvement (top 3-5)\n"
+            "4. Common themes in positive reviews\n"
+            "5. Common themes in negative reviews\n"
+            "6. Specific actionable recommendations\n"
+            "7. Time-based trends (if noticeable)\n"
+            "8. Price-value perception\n\n"
+            "Format as JSON with these keys:\n"
+            "{{\n"
+            "    \"sentiment_score\": float,\n"
+            "    \"strengths\": [str],\n"
+            "    \"improvements\": [str],\n"
+            "    \"themes\": {{\n"
+            "        \"positive\": [str],\n"
+            "        \"negative\": [str]\n"
+            "    }},\n"
+            "    \"recommendations\": [str],\n"
+            "    \"trends\": {{\n"
+            "        \"recent\": str,\n"
+            "        \"price_perception\": str\n"
+            "    }}\n"
+            "}}\n"
+        ).format(
+            business_data.get('name', 'the business'),
+            business_data.get('rating', 'N/A'),
+            business_data.get('total_ratings', 'N/A'),
+            business_data.get('price_level', 'N/A'),
+            reviews_joined
+        )
+        
         try:
-            # Create detailed prompt
-            prompt = f"""
-            As a sentiment analysis expert, provide a comprehensive analysis of this business's customer feedback:
-            
-            BUSINESS INFO:
-            - Name: {business_data.get('name', 'Unknown')}
-            - Rating: {business_data.get('rating', 0)}/5.0
-            - Reviews: {business_data.get('reviews_count', 0)}
-            
-            Please provide a detailed analysis including:
-            1. SENTIMENT OVERVIEW
-            - Overall customer sentiment trend
-            - Key emotional patterns in feedback
-            - Sentiment comparison with industry standards
-            
-            2. CUSTOMER EXPERIENCE
-            - Key positive experiences
-            - Common pain points
-            - Service quality assessment
-            
-            3. SPECIFIC STRENGTHS
-            - Standout positive features
-            - Consistent praise points
-            - Unique selling propositions
-            
-            4. IMPROVEMENT OPPORTUNITIES
-            - Critical areas for enhancement
-            - Customer suggestions
-            - Service gaps identified
-            
-            5. ACTIONABLE RECOMMENDATIONS
-            - Short-term improvements
-            - Long-term strategic changes
-            - Customer satisfaction metrics to track
-            
-            Format the response in clear sections with bullet points.
-            Focus on actionable insights and specific examples where possible.
-            """
-            
-            # Make API request with the configured model
-            response = requests.post(
-                url=self.model_config["url"],
-                headers={
-                    **self.model_config["headers"],
-                    "Authorization": f"Bearer {self.api_key}"
-                },
-                json={
-                    "model": self.model_config["model"],
-                    "messages": [{"role": "user", "content": prompt}]
-                }
+            response = client.chat.completions.create(
+                model=self.model_config["model"],
+                messages=[{"role": "user", "content": prompt}],
+                response_format={"type": "json_object"}
             )
-            response.raise_for_status()
-            return response.json()["choices"][0]["message"]["content"].strip()
             
-        except requests.exceptions.RequestException as e:
-            raise Exception(f"Error connecting to AI service: {str(e)}")
+            analysis = json.loads(response.choices[0].message.content)
+            return analysis
+            
         except Exception as e:
-            raise Exception(f"Error generating sentiment analysis: {str(e)}")
+            print(f"Error in AI analysis: {e}")
+            return {
+                "error": str(e),
+                "sentiment_score": 0,
+                "strengths": [],
+                "improvements": [],
+                "themes": {"positive": [], "negative": []},
+                "recommendations": [],
+                "trends": {"recent": "", "price_perception": ""}
+            }
 
 def analyze_sentiment(api_key, reviews):
     client = OpenAI(

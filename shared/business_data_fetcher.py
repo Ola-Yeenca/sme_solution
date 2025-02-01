@@ -12,6 +12,7 @@ from requests.packages.urllib3.util.retry import Retry
 from dotenv import load_dotenv
 
 from config.business_types import BusinessType, PRICE_CONFIGS, API_ENDPOINTS, ANALYSIS_CONFIGS, DEFAULT_VALUES
+from .google_places_adapter import GooglePlacesAdapter
 
 class BusinessDataFetcher(ABC):
     """Abstract base class for business data fetchers."""
@@ -22,16 +23,18 @@ class BusinessDataFetcher(ABC):
         load_dotenv()
         
         self.business_type = business_type
-        self.api_key = os.getenv("RAPIDAPI_KEY")
-        if not self.api_key:
+        self.rapidapi_key = os.getenv("RAPIDAPI_KEY")
+        if not self.rapidapi_key:
             raise ValueError("RAPIDAPI_KEY environment variable is not set")
-        
-        self.headers = {
-            "X-RapidAPI-Key": self.api_key,
-            "X-RapidAPI-Host": "tripadvisor16.p.rapidapi.com",
-            "Content-Type": "application/json"
-        }
-
+            
+        # Initialize data source adapters
+        try:
+            self.google_places = GooglePlacesAdapter()
+            self.has_google_places = True
+        except ValueError:
+            print("Warning: Google Places API not configured, falling back to TripAdvisor only")
+            self.has_google_places = False
+            
         # Configure retry strategy with longer delays
         retry_strategy = Retry(
             total=5,  # Increase total retries
@@ -74,35 +77,124 @@ class BusinessDataFetcher(ABC):
             print(f"Error estimating price range: {str(e)}")
             return (0, 100)
     
-    def get_business_details(self, business_name: str) -> Dict[str, Any]:
-        """Get business details from the API."""
-        try:
-            url = self._get_search_endpoint()
-            params = self._get_search_params(business_name)
+    def get_business_data(self, business_name: str) -> Dict[str, Any]:
+        """Get business data from available sources.
+        
+        Args:
+            business_name: Name of the business to fetch data for
             
-            response = self._make_api_request(url, params)
-            if not response:
-                raise Exception("No response received from API")
+        Returns:
+            Dictionary containing combined business data
+        """
+        data = {
+            "tripadvisor": self._get_tripadvisor_data(business_name),
+            "google_places": None
+        }
+        
+        if self.has_google_places:
+            google_data = self.google_places.search_business(business_name)
+            if google_data:
+                data["google_places"] = google_data
+                
+        return self._combine_business_data(data)
+        
+    def get_reviews(self, business_name: str, limit: int = 20) -> List[Dict[str, Any]]:
+        """Get reviews from all available sources.
+        
+        Args:
+            business_name: Name of the business to fetch reviews for
+            limit: Maximum number of reviews per source
             
-            return self._parse_business_data(response)
+        Returns:
+            List of review dictionaries from all sources
+        """
+        reviews = []
+        
+        # Get TripAdvisor reviews
+        tripadvisor_data = self._get_tripadvisor_data(business_name)
+        if tripadvisor_data and "reviews" in tripadvisor_data:
+            reviews.extend(tripadvisor_data["reviews"][:limit])
             
-        except Exception as e:
-            raise Exception(f"Error fetching business details: {str(e)}")
+        # Get Google Places reviews if available
+        if self.has_google_places:
+            google_data = self.google_places.search_business(business_name)
+            if google_data:
+                google_reviews = self.google_places.get_reviews(google_data["place_id"], limit)
+                reviews.extend(google_reviews)
+                
+        return reviews
+        
+    def _combine_business_data(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """Combine business data from multiple sources.
+        
+        Args:
+            data: Dictionary containing data from different sources
+            
+        Returns:
+            Dictionary containing combined business data
+        """
+        combined = {
+            "name": "",
+            "rating": 0.0,
+            "total_ratings": 0,
+            "price_level": "",
+            "address": "",
+            "reviews": [],
+            "sources": []
+        }
+        
+        # Process TripAdvisor data
+        if data["tripadvisor"]:
+            combined["sources"].append("tripadvisor")
+            ta_data = data["tripadvisor"]
+            combined.update({
+                "name": ta_data.get("name", combined["name"]),
+                "rating": float(ta_data.get("rating", 0)),
+                "total_ratings": int(ta_data.get("num_reviews", 0)),
+                "price_level": ta_data.get("price_level", ""),
+                "address": ta_data.get("address", ""),
+                "reviews": ta_data.get("reviews", [])
+            })
+            
+        # Process Google Places data
+        if data["google_places"]:
+            combined["sources"].append("google_places")
+            gp_data = data["google_places"]
+            
+            # Update with Google data or keep existing if Google data is missing
+            if not combined["name"]:
+                combined["name"] = gp_data.get("name", "")
+            if not combined["rating"]:
+                combined["rating"] = float(gp_data.get("rating", 0))
+            if not combined["total_ratings"]:
+                combined["total_ratings"] = int(gp_data.get("total_ratings", 0))
+            if not combined["price_level"]:
+                combined["price_level"] = gp_data.get("price_level", "")
+            if not combined["address"]:
+                combined["address"] = gp_data.get("address", "")
+                
+            combined["reviews"].extend(gp_data.get("reviews", []))
+            
+        return combined
     
-    def get_competitors(self, business_name: str) -> List[Dict[str, Any]]:
-        """Get competitors near the business location."""
-        try:
-            url = self._get_search_endpoint()
-            params = self._get_search_params(business_name)
-            
-            response = self._make_api_request(url, params)
-            if not response:
-                raise Exception("No response received from API")
-            
-            return self._parse_competitor_data(response)
-            
-        except Exception as e:
-            raise Exception(f"Error fetching competitors: {str(e)}")
+    def _get_headers(self) -> Dict[str, str]:
+        """Get headers for API requests."""
+        return {
+            "X-RapidAPI-Key": self.rapidapi_key,
+            "X-RapidAPI-Host": "tripadvisor16.p.rapidapi.com",
+            "Content-Type": "application/json"
+        }
+        
+    def _get_tripadvisor_data(self, business_name: str) -> Dict[str, Any]:
+        """Get TripAdvisor data for the business."""
+        url = self._get_search_endpoint()
+        params = self._get_search_params(business_name)
+        
+        response = self._make_api_request(url, params)
+        if not response:
+            raise Exception("No response received from API")
+        
+        return self._parse_business_data(response)
     
     def _make_api_request(self, url: str, params: Dict[str, Any] = None) -> Optional[Dict[str, Any]]:
         """Make an API request with improved rate limiting and retry logic."""
@@ -122,7 +214,7 @@ class BusinessDataFetcher(ABC):
                     time.sleep(wait_time)
 
                 # Make the request
-                response = self.session.get(url, headers=self.headers, params=params)
+                response = self.session.get(url, headers=self._get_headers(), params=params)
                 self.last_request_time = time.time()
 
                 # Handle different response status codes
@@ -136,7 +228,7 @@ class BusinessDataFetcher(ABC):
                     # Add jitter to retry time
                     retry_after += random.uniform(0, 2)
                     
-                    app.logger.warning(f"Rate limit hit, waiting {retry_after} seconds")
+                    print(f"Rate limit hit, waiting {retry_after} seconds")
                     time.sleep(retry_after)
                     current_retry += 1
                     continue
@@ -146,7 +238,7 @@ class BusinessDataFetcher(ABC):
             except requests.exceptions.RequestException as e:
                 if current_retry < max_retries - 1:
                     wait_time = base_wait_time * (2 ** current_retry) + random.uniform(0, 2)
-                    app.logger.warning(f"Request failed, retrying in {wait_time} seconds")
+                    print(f"Request failed, retrying in {wait_time} seconds")
                     time.sleep(wait_time)
                     current_retry += 1
                     continue

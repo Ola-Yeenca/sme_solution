@@ -1,5 +1,6 @@
 from shared.business_data_fetcher import BusinessDataFetcher
 from typing import Dict, Any, List
+from config.business_types import BusinessType
 import requests
 import os
 from dotenv import load_dotenv
@@ -8,6 +9,14 @@ load_dotenv()
 
 class TouristAttractionDataFetcher(BusinessDataFetcher):
     """Data fetcher for tourist attractions."""
+
+    def __init__(self, business_type: BusinessType = BusinessType.ATTRACTION):
+        """Initialize tourist attraction data fetcher."""
+        super().__init__()
+        self.business_type = business_type
+        self.api_key = os.getenv("TRIPADVISOR_API_KEY")
+        if not self.api_key:
+            raise ValueError("TRIPADVISOR_API_KEY environment variable is not set")
 
     def _get_search_params(self, business_name: str) -> Dict[str, Any]:
         """Get search parameters for tourist attraction."""

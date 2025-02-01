@@ -10,9 +10,10 @@ from shared.ai_model_config import AIModel, ModelConfig
 class CompetitorAnalyzer:
     """Analyzer for competitor analysis."""
     
-    def __init__(self, data_fetcher: BusinessDataFetcher):
-        """Initialize with a data fetcher."""
+    def __init__(self, data_fetcher: BusinessDataFetcher, business_type=None):
+        """Initialize with a data fetcher and optional business type."""
         self.data_fetcher = data_fetcher
+        self.business_type = business_type
         self.api_key = os.getenv("OPENROUTER_API_KEY")
         if not self.api_key:
             raise ValueError("OPENROUTER_API_KEY environment variable is not set")
@@ -54,88 +55,95 @@ class CompetitorAnalyzer:
             raise Exception(f"Error in competitor analysis: {str(e)}")
 
     def _get_ai_analysis(self, business_data: Dict[str, Any], competitors: List[Dict[str, Any]]) -> str:
-        """Get AI-powered competitor analysis using Claude-3."""
+        """Get AI-powered competitor analysis."""
         try:
-            # Create detailed prompt
-            prompt = """
-            As a competitive analysis expert, provide a comprehensive competitor analysis:
-            
-            BUSINESS INFO:
-            - Name: {name}
-            - Rating: {rating}/5.0
-            - Reviews: {reviews}
-            - Price Level: {price_level}
-            
-            COMPETITORS:
-            {competitors_info}
-            
-            Please provide a detailed competitive analysis including:
-            1. MARKET POSITION
-            - Competitive landscape overview
-            - Market share analysis
-            - Positioning strategy
-            
-            2. COMPETITIVE ADVANTAGES
-            - Key differentiators
-            - Unique selling propositions
-            - Service quality comparison
-            
-            3. COMPETITOR STRENGTHS
-            - Best practices identified
-            - Superior offerings
-            - Customer preferences
-            
-            4. MARKET OPPORTUNITIES
-            - Underserved segments
-            - Service gaps
-            - Growth potential
-            
-            5. STRATEGIC RECOMMENDATIONS
-            - Short-term tactics
-            - Long-term strategy
-            - Performance metrics
-            
-            Format the response in clear sections with bullet points.
-            Focus on actionable insights and specific examples.
-            """
-            
-            # Format competitors info
-            competitors_info = "\n".join(
-                "- {name}: Rating {rating}/5.0, Reviews {reviews}, Price Level {price_level}, Distance: {distance:.1f}km".format(
-                    name=comp['name'],
-                    rating=comp['rating'],
-                    reviews=comp['reviews_count'],
-                    price_level=comp['price_level'],
-                    distance=comp.get('distance_km', 0)
-                )
-                for comp in competitors[:5]  # Top 5 competitors
+            # Format business data
+            business_info = (
+                f"Business Profile:\n"
+                f"- Name: {business_data['name']}\n"
+                f"- Rating: {business_data['rating']}/5.0\n"
+                f"- Reviews: {business_data['reviews_count']}\n"
+                f"- Price Level: {business_data['price_level']}\n"
+                f"- Market Share: {business_data.get('local_market_share', 0)*100:.1f}%\n"
+                f"- Cuisine: {', '.join(business_data.get('cuisine', []))}"
             )
             
-            # Format the prompt with business data
-            formatted_prompt = prompt.format(
-                name=business_data.get('name', 'Unknown'),
-                rating=business_data.get('rating', 0),
-                reviews=business_data.get('reviews_count', 0),
-                price_level=business_data.get('price_level', '€'),
-                competitors_info=competitors_info
+            # Format competitor data
+            competitors_info = "Competitors:\n" + "\n".join(
+                f"- {comp['name']}:\n"
+                f"  * Rating: {comp['rating']}/5.0\n"
+                f"  * Reviews: {comp['reviews_count']}\n"
+                f"  * Price Level: {comp['price_level']}\n"
+                f"  * Distance: {comp['distance_km']:.1f}km"
+                for comp in competitors[:5]
             )
             
-            # Make API request with the configured model
+            # Create comprehensive analysis prompt
+            prompt = f"""As a strategic business analyst, provide a detailed competitor analysis for this business.
+
+{business_info}
+
+{competitors_info}
+
+Please provide a comprehensive analysis including:
+
+1. Competitive Position Assessment
+   - Market positioning
+   - Unique selling propositions
+   - Brand strength analysis
+   - Price-value relationship
+
+2. Competitor Strengths & Weaknesses
+   - Service quality comparison
+   - Price point analysis
+   - Location advantages/disadvantages
+   - Customer satisfaction metrics
+
+3. Market Opportunities
+   - Underserved segments
+   - Service gaps
+   - Geographic expansion potential
+   - Menu/offering optimization
+
+4. Competitive Advantages
+   - Current advantages to leverage
+   - Potential new advantages to develop
+   - Ways to differentiate
+
+5. Threat Mitigation
+   - Direct competition threats
+   - Indirect competition
+   - Market trends impact
+   - Risk mitigation strategies
+
+6. Action Plan
+   - Short-term tactics (0-3 months)
+   - Medium-term strategy (3-12 months)
+   - Long-term positioning (1-3 years)
+   - Resource allocation recommendations
+
+Focus on actionable insights that will help the business strengthen its competitive position while maintaining profitability."""
+
+            # Get AI analysis
+            headers = {
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json"
+            }
+            
             response = requests.post(
-                url=self.model_config["url"],
-                headers={
-                    **self.model_config["headers"],
-                    "Authorization": f"Bearer {self.api_key}"
-                },
+                self.model_config['endpoint'],
+                headers=headers,
                 json={
-                    "model": self.model_config["model"],
-                    "messages": [{"role": "user", "content": formatted_prompt}]
+                    "model": self.model_config['model_id'],
+                    "messages": [{"role": "user", "content": prompt}]
                 }
             )
-            response.raise_for_status()
-            return response.json()["choices"][0]["message"]["content"].strip()
             
-        except requests.exceptions.RequestException as e:
-            raise Exception(f"Error connecting to AI service: {str(e)}")
+            if response.status_code != 200:
+                raise Exception(f"API Error: {response.text}")
+                
+            analysis = response.json()['choices'][0]['message']['content']
+            return analysis
+            
         except Exception as e:
-            raise Exception(f"Error generating competitor analysis: {str(e)}")
+            raise Exception(f"Error in AI analysis: {str(e)}")
