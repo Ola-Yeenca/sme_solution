@@ -35,7 +35,7 @@ AI-powered business intelligence platform that provides comprehensive analytics 
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/smeanalytica.git
+git clone https://github.com/Ola-Yeenca/sme_solution.git
 cd smeanalytica
 ```
 
