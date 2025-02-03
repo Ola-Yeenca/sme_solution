@@ -3,6 +3,8 @@ name: Deploy Frontend to GitHub Pages
 on:
   push:
     branches: [ main ]
+    paths:
+      - 'smeanalytica/smeanalytica-web/**'
   workflow_dispatch:
 
 permissions:
@@ -13,6 +15,9 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: smeanalytica/smeanalytica-web
     steps:
       - uses: actions/checkout@v4
       
@@ -21,24 +26,20 @@ jobs:
         with:
           node-version: '18'
           cache: 'npm'
-          cache-dependency-path: './smeanalytica/smeanalytica-web/package-lock.json'
+          cache-dependency-path: 'smeanalytica/smeanalytica-web/package-lock.json'
       
       - name: Install Dependencies
-        run: |
-          cd smeanalytica/smeanalytica-web
-          npm install
+        run: npm install
       
       - name: Build
-        run: |
-          cd smeanalytica/smeanalytica-web
-          npm run build
+        run: npm run build
         env:
           VITE_API_URL: ${{ secrets.VITE_API_URL }}
       
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: './smeanalytica/smeanalytica-web/dist'
+          path: dist
 
   deploy:
     environment:

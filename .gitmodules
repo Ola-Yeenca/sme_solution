@@ -1,0 +1,3 @@
+[submodule "smeanalytica"]
+    path = smeanalytica
+    url = https://github.com/Ola-Yeenca/sme_solution.git
