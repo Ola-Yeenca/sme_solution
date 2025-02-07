@@ -24,6 +24,7 @@ pip install -r requirements.txt
 ```bash
 export GOOGLE_PLACES_API_KEY="your_key_here"
 export OPENROUTER_API_KEY="your_key_here"
+export YELP_API_KEY="your_key_here"
 ```
 
 3. Run the development server:

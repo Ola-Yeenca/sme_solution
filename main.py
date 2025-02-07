@@ -1,100 +1,109 @@
-"""Main entry point for the Valencia SME Solutions application."""
+"""Main Flask application for SME Analytica."""
 
 import os
-from typing import Optional
+import logging
 from dotenv import load_dotenv
+from flask import Flask, request, jsonify, Blueprint
+from flask_cors import CORS
 
-from config.business_types import BusinessType
-from shared.business_analyzer_factory import BusinessAnalyzerFactory
-from solutions.dynamic_pricing import DynamicPricingEngine
-from solutions.sentiment_analysis import SentimentAnalyzer
-from solutions.competitor_analysis import CompetitorAnalyzer
-from solutions.sales_forecasting import SalesForecastingEngine
+from smeanalytica.shared.business_analyzer_factory import BusinessAnalyzerFactory
+from smeanalytica.api.routes.data import bp as data_bp
+from smeanalytica.api.routes.health import bp as health_bp
+from smeanalytica.api.routes.analysis import bp as analysis_bp
+from smeanalytica.exceptions import AnalysisError, BusinessAnalysisError
 
-def validate_environment():
-    """Validate required environment variables."""
-    required_vars = {
-        "RAPIDAPI_KEY": "RapidAPI key for TripAdvisor API",
-        "OPENROUTER_API_KEY": "OpenRouter API key for AI analysis"
-    }
-    
-    missing_vars = []
-    for var, description in required_vars.items():
-        if not os.getenv(var):
-            missing_vars.append(f"{var} ({description})")
-    
-    if missing_vars:
-        print("\nError: Missing required environment variables:")
-        for var in missing_vars:
-            print(f"- {var}")
-        print("\nPlease set these variables in your .env file or environment.")
-        return False
-    
-    return True
+# Load environment variables
+load_dotenv()
 
-def main():
-    """Main function to run the business analysis framework."""
-    # Load environment variables
-    load_dotenv()
+# Configure logging
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
+
+def create_app():
+    """Create and configure the Flask application."""
+    app = Flask(__name__)
     
-    # Validate environment
-    if not validate_environment():
-        return
-    
-    print("\nWelcome to Valencia SME Solutions!")
-    
-    # Display available business types
-    print("\nAvailable business types:")
-    for business_type in BusinessType:
-        print(f"- {business_type.value}")
-    
-    # Get business type from user
-    business_type_str = input("\nEnter your business type: ").lower()
-    try:
-        business_type = BusinessType(business_type_str)
-    except ValueError:
-        print(f"Error: Invalid business type '{business_type_str}'")
-        return
-    
-    # Get business name from user
-    business_name = input("\nEnter your business name: ")
-    
-    # Create business analyzer
-    analyzer = BusinessAnalyzerFactory.create_analyzer(business_type)
-    if not analyzer:
-        return
-    
-    # Create analysis engines
-    dynamic_pricing = DynamicPricingEngine(analyzer)
-    sentiment_analyzer = SentimentAnalyzer(analyzer, os.getenv("OPENROUTER_API_KEY"))
-    competitor_analyzer = CompetitorAnalyzer(analyzer)
-    sales_forecasting = SalesForecastingEngine(analyzer)  # Only pass the analyzer
-    
-    while True:
-        # Display analysis options
-        print("\nAvailable analyses:")
-        print("1. Dynamic Pricing Analysis")
-        print("2. Sentiment Analysis")
-        print("3. Competitor Analysis")
-        print("4. Sales Forecasting")
-        print("5. Exit")
-        
-        # Get user choice
-        choice = input("\nSelect an analysis (1-5): ")
-        
-        if choice == "1":
-            dynamic_pricing.analyze_pricing(business_name)
-        elif choice == "2":
-            sentiment_analyzer.analyze_sentiment(business_name)
-        elif choice == "3":
-            competitor_analyzer.analyze_competitors(business_name)
-        elif choice == "4":
-            sales_forecasting.forecast_sales(business_name)
-        elif choice == "5":
-            print("\nThank you for using Valencia SME Solutions!")
-            break
-        else:
-            print("Invalid choice. Please try again.")
+    # Configure CORS
+    CORS(app, resources={
+        r"/api/*": {
+            "origins": "*",  # Allow all origins in development
+            "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+            "allow_headers": ["Content-Type", "X-API-Key", "Accept"],
+        }
+    })
+
+    # Create main API blueprint
+    api_bp = Blueprint('api', __name__, url_prefix='/api')
+
+    # Register sub-blueprints with the main API blueprint
+    api_bp.register_blueprint(data_bp)
+    api_bp.register_blueprint(health_bp)
+    api_bp.register_blueprint(analysis_bp)
+
+    # Register the main API blueprint with the app
+    app.register_blueprint(api_bp)
+
+    # Create analyzer factory
+    analyzer_factory = BusinessAnalyzerFactory()
+
+    @app.before_request
+    def startup():
+        """Initialize application resources."""
+        try:
+            # Get environment
+            env = os.getenv('FLASK_ENV', 'development')
+            
+            # Check for required environment variables in development
+            if env == 'development':
+                required_vars = ['OPENROUTER_API_KEY']
+                missing_vars = [var for var in required_vars if not os.getenv(var)]
+                if missing_vars:
+                    logger.warning(f"Missing environment variables in development mode: {', '.join(missing_vars)}")
+                    if request.path.startswith('/health'):
+                        return  # Allow health checks to proceed
+            else:
+                # In production, raise an error for missing required variables
+                required_vars = ['OPENROUTER_API_KEY']
+                missing_vars = [var for var in required_vars if not os.getenv(var)]
+                if missing_vars:
+                    raise ValueError(f"Missing required environment variables: {', '.join(missing_vars)}")
+                
+            logger.info("Application startup complete")
+            
+        except Exception as e:
+            logger.error(f"Startup failed: {str(e)}")
+            if os.getenv('ENVIRONMENT') != 'development':
+                raise
+
+    @app.teardown_appcontext
+    def shutdown(exception=None):
+        """Clean up application resources."""
+        if exception:
+            logger.error(f"Error during shutdown: {str(exception)}")
+        logger.info("Application shutdown complete")
+
+    @app.errorhandler(AnalysisError)
+    def handle_analysis_error(error):
+        """Handle analysis-specific errors."""
+        return jsonify({
+            'status': 'error',
+            'error': 'Analysis error',
+            'message': str(error)
+        }), 400
+
+    @app.errorhandler(BusinessAnalysisError)
+    def handle_business_analysis_error(error):
+        """Handle business analysis specific errors."""
+        return jsonify({
+            'status': 'error',
+            'error': 'Business analysis error',
+            'message': str(error)
+        }), 400
+
+    return app
 
 if __name__ == "__main__":
-    main()
+    app = create_app()
+    port = int(os.getenv("PORT", "8000"))
+    debug = os.getenv("DEBUG", "True").lower() == "true"
+    app.run(host="0.0.0.0", port=port, debug=debug)

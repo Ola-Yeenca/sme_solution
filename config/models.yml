@@ -1,0 +1,89 @@
+# AI Model Configuration
+models:
+  sentiment_analysis:
+    default: claude-3-sonnet
+    fallback: mistral-medium
+    config:
+      temperature: 0.7
+      max_tokens: 1000
+      
+  pricing_analysis:
+    default: xgboost
+    config:
+      max_depth: 6
+      learning_rate: 0.1
+      n_estimators: 100
+      objective: 'reg:squarederror'
+      early_stopping_rounds: 10
+      eval_metric: 'rmse'
+      feature_columns:
+        - rating
+        - review_count
+        - capacity
+        - years_in_business
+        - premium_features
+        - competitor_avg_price
+        - competitor_max_price
+        - competitor_min_price
+        - competitor_std_price
+        - location_score
+        - seasonality_factor
+      
+  sales_forecast:
+    default: xgboost
+    fallback: claude-3-opus
+    config:
+      max_depth: 8
+      learning_rate: 0.05
+      n_estimators: 200
+      objective: 'reg:squarederror'
+      early_stopping_rounds: 20
+      eval_metric: ['rmse', 'mae']
+      feature_columns:
+        - historical_sales
+        - day_of_week
+        - month
+        - is_holiday
+        - is_weekend
+        - weather_score
+        - event_score
+        - trend
+        - seasonality
+        - promotion_active
+      
+  competitor_analysis:
+    default: claude-3-sonnet
+    fallback: gpt-4-turbo
+    config:
+      temperature: 0.5
+      max_tokens: 1500
+
+  market:
+    default: claude-3-sonnet
+    fallback: mistral-medium
+    config:
+      temperature: 0.7
+      max_tokens: 2000
+      system_prompt: |
+        You are a market analysis expert. Analyze the business data and provide insights on:
+        1. Market position
+        2. Competitive analysis
+        3. Growth opportunities
+        4. Risk factors
+        5. Recommendations
+
+data_sources:
+  priority:
+    business_info: ['google_places', 'yelp', 'osm']
+    reviews: ['google_places', 'yelp']
+    pricing: ['yelp', 'google_places']
+    historical: ['yelp']
+  google_places:
+    priority: 1
+    cache_ttl: 3600
+  yelp:
+    priority: 2
+    cache_ttl: 3600
+  tripadvisor:
+    priority: 3
+    cache_ttl: 3600

@@ -1,0 +1,24 @@
+# API Configuration
+server:
+  host: '0.0.0.0'
+  port: 5000
+  debug: false
+
+cors:
+  origins: 
+    - 'http://localhost:3000'
+    - 'https://smeanalytica.com'
+  methods: ['GET', 'POST', 'OPTIONS']
+
+rate_limits:
+  default: '100/hour'
+  analysis: '50/hour'
+
+cache:
+  ttl: 86400  # 24 hours
+  max_size: 1000  # entries
+
+api_keys:
+  google_places: ${GOOGLE_PLACES_API_KEY}
+  openrouter: ${OPENROUTER_API_KEY}
+  yelp: ${YELP_API_KEY}

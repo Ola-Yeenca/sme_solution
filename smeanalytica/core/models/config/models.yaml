@@ -1,0 +1,91 @@
+sentiment:
+  type: xgboost
+  parameters:
+    objective: binary:logistic
+    max_depth: 6
+    learning_rate: 0.1
+    n_estimators: 100
+    subsample: 0.8
+    colsample_bytree: 0.8
+  features:
+    text_embeddings: true
+    sentiment_lexicon: true
+    text_statistics: true
+
+pricing:
+  type: xgboost
+  parameters:
+    objective: reg:squarederror
+    max_depth: 8
+    learning_rate: 0.05
+    n_estimators: 200
+    subsample: 0.9
+    colsample_bytree: 0.9
+  features:
+    price_history: true
+    market_data: true
+    competitor_prices: true
+    demand_signals: true
+
+dynamic_pricing:
+  type: xgboost
+  parameters:
+    objective: reg:squarederror
+    max_depth: 8
+    learning_rate: 0.05
+    n_estimators: 200
+    subsample: 0.9
+    colsample_bytree: 0.9
+  features:
+    price_history: true
+    market_data: true
+    competitor_prices: true
+    demand_signals: true
+    real_time_demand: true
+    time_of_day: true
+    seasonality: true
+
+competition:
+  type: xgboost
+  parameters:
+    objective: multi:softmax
+    num_class: 3
+    max_depth: 7
+    learning_rate: 0.08
+    n_estimators: 150
+    subsample: 0.85
+    colsample_bytree: 0.85
+  features:
+    market_position: true
+    competitor_metrics: true
+    growth_indicators: true
+
+forecast:
+  type: xgboost
+  parameters:
+    objective: reg:squarederror
+    max_depth: 10
+    learning_rate: 0.03
+    n_estimators: 300
+    subsample: 0.95
+    colsample_bytree: 0.95
+  features:
+    historical_sales: true
+    seasonality: true
+    trend_indicators: true
+    external_factors: true
+
+market:
+  type: xgboost
+  parameters:
+    objective: reg:squarederror
+    max_depth: 9
+    learning_rate: 0.04
+    n_estimators: 250
+    subsample: 0.9
+    colsample_bytree: 0.9
+  features:
+    market_size: true
+    growth_potential: true
+    competition_metrics: true
+    market_trends: true

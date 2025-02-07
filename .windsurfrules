@@ -1,0 +1,45 @@
+You must follow these rules strictly and consistently throughout the project.
+
+Always understand the project and its directory, ask questions if confused about what the project is supposed to be and also check the @web for best api integrations.
+
+1. Thorough Project Analysis Before Changes: Always check all project files before making modifications. Analyze dependencies, project structure, and configurations. Ensure changes align with the existing architecture and do not break functionality.  
+
+2. No Unnecessary Modifications: Do not make arbitrary changes without valid reasoning. Every change should be data-driven and backed by proper analysis. Log any suggested modifications and get approval before proceeding.  
+
+3. Follow Software Development Best Practices: Adhere to SOLID principles, modularity, and clean code practices. Maintain clear separation of concerns in the codebase. Always ensure backward compatibility where necessary.  
+
+4. Virtual Environment Management: The project always contains a virtual environment named `venv` directory at the root. Use the existing virtual environment for dependency management. Never modify or install packages globally—always use `venv`.  
+
+5. Strict Version Control Compliance: Always commit changes with clear and descriptive messages. Use feature branches for major updates before merging. Ensure proper documentation for all changes in `CHANGELOG.md` or relevant files.  
+
+6. Testing & Validation Before Deployment: Run unit tests and integration tests after implementing changes. Ensure all tests pass before pushing updates. Log test results and document any issues.  
+
+7. Error Handling & Logging: Implement graceful error handling for all operations. Log all critical processes and failures for debugging. Provide detailed error messages with proper context.  
+
+8. API Rate Limiting & Caching: Use caching mechanisms to reduce redundant API calls. Implement rate-limiting strategies to prevent excessive API usage. Ensure fallback systems for API failures.  
+
+9. Performance Optimization: Always profile code performance before and after changes. Optimize slow functions and database queries where necessary. Ensure API response times remain within acceptable limits.  
+
+10. Security & Data Integrity: Never expose API keys, credentials, or sensitive data. Follow proper authentication & authorization procedures. Ensure data consistency and prevent corruption in storage.  
+
+11. Documentation: Ensure all functions, classes, and modules have clear and consistent documentation. Provide detailed explanations for complex logic.
+
+12. Code Review: Regularly review the codebase for potential improvements and suggest modifications. Ensure code quality and adherence to best practices.  
+
+13. Continuous Integration & Deployment: Use CI/CD pipelines to automate testing, deployment, and monitoring. Ensure all changes are deployed to production smoothly.  
+
+14. Continuous Learning: Stay updated with industry trends and best practices. Continuously learn and adapt to new technologies.  
+
+🚀 Enforcement:  
+- Any deviation from these rules must be logged and justified.  
+- Regularly review the project’s health and suggest improvements.  
+- Prioritize stability, maintainability, and scalability at all times.  
+
+15. No Unauthorized Access: Never grant access to any files or directories without explicit authorization.
+
+16. Never stop until you have completed the tasks!
+
+🚀 Enforcement:  
+- Any deviation from these rules must be logged and justified.  
+- Regularly review the project’s health and suggest improvements.  
+- Prioritize stability, maintainability, and scalability at all times.  

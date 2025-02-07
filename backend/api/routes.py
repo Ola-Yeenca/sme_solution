@@ -57,3 +57,43 @@ def search_location():
         })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@api.route('/analyze/dynamic_pricing', methods=['POST'])
+async def analyze_dynamic_pricing():
+    """Analyze dynamic pricing for a business."""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({
+                "status": "error",
+                "message": "No data provided"
+            }), 400
+
+        required_fields = ["business_name", "business_type", "location"]
+        missing_fields = [field for field in required_fields if field not in data]
+        if missing_fields:
+            return jsonify({
+                "status": "error",
+                "message": f"Missing required fields: {', '.join(missing_fields)}"
+            }), 400
+
+        # Create analyzer
+        business_type = data.get('business_type')
+        print(f"Creating new analyzer for {business_type} with dynamic_pricing")
+        # factory = BusinessAnalyzerFactory()
+        # analyzer = factory.create_analyzer(business_type, AnalysisType.DYNAMIC_PRICING)
+
+        # Get analysis
+        # analysis = await analyzer.analyze_pricing_strategy(data)
+
+        return jsonify({
+            "status": "success",
+            "data": {}
+        })
+
+    except Exception as e:
+        print(f"Error in dynamic pricing analysis: {str(e)}", exc_info=True)
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
